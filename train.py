@@ -35,16 +35,19 @@ if __name__ == "__main__":
         ng.set_gpus(config.GPU_ID)
     else:
         ng.get_gpus(config.NUM_GPUS)
+
     # training data
     with open(config.DATA_FLIST[config.DATASET][0]) as f:
         fnames = f.read().splitlines()
     data = ng.data.DataFromFNames(
         fnames, config.IMG_SHAPES, random_crop=config.RANDOM_CROP)
     images = data.data_pipeline(config.BATCH_SIZE)
+
     # main model
     model = InpaintCAModel()
     g_vars, d_vars, losses = model.build_graph_with_losses(
         images, config=config)
+
     # validation images
     if config.VAL:
         with open(config.DATA_FLIST[config.DATASET][1]) as f:
@@ -57,12 +60,14 @@ if __name__ == "__main__":
                 random_crop=config.RANDOM_CROP).data_pipeline(1)
             static_inpainted_images = model.build_static_infer_graph(
                 static_images, config, name='static_view/%d' % i)
+
     # training settings
     lr = tf.get_variable(
         'lr', shape=[], trainable=False,
         initializer=tf.constant_initializer(1e-4))
     d_optimizer = tf.train.AdamOptimizer(lr, beta1=0.5, beta2=0.9)
     g_optimizer = d_optimizer
+
     # gradient processor
     if config.GRADIENT_CLIP:
         gradient_processor = lambda grad_var: (
@@ -70,11 +75,13 @@ if __name__ == "__main__":
             grad_var[1])
     else:
         gradient_processor = None
+
     # log dir
     log_prefix = 'model_logs/' + '_'.join([
         ng.date_uid(), socket.gethostname(), config.DATASET,
         'MASKED' if config.GAN_WITH_MASK else 'NORMAL',
-        config.GAN,config.LOG_DIR])
+        config.GAN, config.LOG_DIR])
+
     # train discriminator with secondary trainer, should initialize before
     # primary trainer.
     discriminator_training_callback = ng.callbacks.SecondaryTrainer(
@@ -86,6 +93,7 @@ if __name__ == "__main__":
         graph_def_kwargs={
             'model': model, 'data': data, 'config': config, 'loss_type': 'd'},
     )
+
     # train generator with primary trainer
     trainer = ng.train.Trainer(
         optimizer=g_optimizer,
@@ -99,6 +107,7 @@ if __name__ == "__main__":
         spe=config.TRAIN_SPE,
         log_dir=log_prefix,
     )
+
     # add all callbacks
     if not config.PRETRAIN_COARSE_NETWORK:
         trainer.add_callbacks(discriminator_training_callback)
@@ -108,5 +117,6 @@ if __name__ == "__main__":
         ng.callbacks.ModelSaver(config.TRAIN_SPE, trainer.context['saver'], log_prefix+'/snap'),
         ng.callbacks.SummaryWriter((config.VAL_PSTEPS//1), trainer.context['summary_writer'], tf.summary.merge_all()),
     ])
+
     # launch training
     trainer.train()

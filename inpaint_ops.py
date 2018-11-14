@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import add_arg_scope
+from tensorflow.python.ops import init_ops
 
 from neuralgym.ops.layers import resize
 from neuralgym.ops.layers import *
@@ -13,6 +14,131 @@ from neuralgym.ops.summary_ops import *
 
 logger = logging.getLogger()
 np.random.seed(2018)
+
+
+@add_arg_scope
+def gated_conv(x, cnum, ksize, stride=1, rate=1, name='gconv',
+               padding='SAME', activation=tf.nn.elu, training=True):
+    assert padding in ['SYMMETRIC', 'SAME', 'REFELECT']
+    if padding == 'SYMMETRIC' or padding == 'REFELECT':
+        p = int(rate*(ksize-1)/2)
+        x = tf.pad(x, [[0, 0], [p, p], [p, p], [0, 0]], mode=padding)
+        padding = 'VALID'
+    feature = tf.layers.conv2d(
+        x, cnum, ksize, stride, dilation_rate=rate,
+        activation=activation, padding=padding, name=name)
+    gating = tf.layers.conv2d(
+        x, cnum, ksize, stride, dilation_rate=rate,
+        activation=tf.sigmoid, padding=padding,
+        name='g_'+name)
+    x = feature * gating
+    return x
+
+
+@add_arg_scope
+def gated_deconv(x, cnum, name='upsample', padding='SAME', training=True):
+    with tf.variable_scope(name):
+        x = resize(x, func=tf.image.resize_nearest_neighbor)
+        x = gated_conv(
+            x, cnum, 3, 1, name=name+'_conv', padding=padding,
+            training=training)
+        return x
+
+
+class Conv2DSN(tf.layers.Conv2D):
+    def build(self, input_shape):
+        super(Conv2DSN, self).build(input_shape)
+        self.kernel = kernel_spectral_norm(self.kernel)
+
+
+def conv2d_sn(
+    inputs,
+    filters,
+    kernel_size=5,
+    strides=(1, 1),
+    padding='SAME',
+    data_format='channels_last',
+    dilation_rate=(1, 1),
+    activation=tf.nn.leaky_relu,
+    use_bias=True,
+    kernel_initializer=None,
+    bias_initializer=init_ops.zeros_initializer(),
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+    kernel_constraint=None,
+    bias_constraint=None,
+    trainable=True,
+    name=None,
+    reuse=None):
+    layer = Conv2DSN(
+        filters=filters,
+        kernel_size=kernel_size,
+        strides=strides,
+        padding=padding,
+        data_format=data_format,
+        dilation_rate=dilation_rate,
+        activation=activation,
+        use_bias=use_bias,
+        kernel_initializer=kernel_initializer,
+        bias_initializer=bias_initializer,
+        kernel_regularizer=kernel_regularizer,
+        bias_regularizer=bias_regularizer,
+        activity_regularizer=activity_regularizer,
+        kernel_constraint=kernel_constraint,
+        bias_constraint=bias_constraint,
+        trainable=trainable,
+        name=name,
+        _reuse=reuse,
+        _scope=name)
+    return layer.apply(inputs)
+
+
+def kernel_spectral_norm(w, iteration=1, name='kernel_sn'):
+    def l2_norm(input_x, epsilon=1e-12):
+        input_x_norm = input_x / (tf.reduce_sum(input_x**2)**0.5 + epsilon)
+        return input_x_norm
+
+    with tf.variable_scope(name):
+        w_shape = w.get_shape().as_list()
+        w_mat = tf.reshape(w, [-1, w_shape[-1]])
+
+        u = tf.get_variable(
+            'u', shape=[1, w_shape[-1]],
+            initializer=tf.truncated_normal_initializer(),
+            trainable=False)
+
+        def power_iteration(u, ite):
+            v_ = tf.matmul(u, tf.transpose(w_mat))
+            v_hat = l2_norm(v_)
+            u_ = tf.matmul(v_hat, w_mat)
+            u_hat = l2_norm(u_)
+            return u_hat, v_hat, ite+1
+
+        u_hat, v_hat, _ = power_iteration(u, iteration)
+        sigma = tf.matmul(tf.matmul(v_hat, w_mat), tf.transpose(u_hat))
+        w_mat = w_mat / sigma
+        with tf.control_dependencies([u.assign(u_hat)]):
+            w_norm = tf.reshape(w_mat, w_shape)
+
+        return w_norm
+
+
+def gan_hinge_loss(dis_real, dis_fake, name='gan_hinge_loss'):
+    """
+    gan with hinge loss:
+    https://github.com/pfnet-research/sngan_projection/blob/master/updater.py
+    """
+    with tf.variable_scope(name):
+        hinge_pos = tf.reduce_mean(tf.nn.relu(1. - dis_real))
+        hinge_neg = tf.reduce_mean(tf.nn.relu(1. + dis_fake))
+        scalar_summary('pos_hinge_avg', hinge_pos)
+        scalar_summary('neg_hinge_avg', hinge_neg)
+        d_loss = tf.add(.5 * hinge_pos, .5 * hinge_neg)
+        g_loss = -tf.reduce_mean(dis_fake)
+        scalar_summary('d_loss', d_loss)
+        scalar_summary('g_loss', g_loss)
+    return g_loss, d_loss
 
 
 @add_arg_scope
@@ -38,7 +164,7 @@ def gen_conv(x, cnum, ksize, stride=1, rate=1, name='conv',
     assert padding in ['SYMMETRIC', 'SAME', 'REFELECT']
     if padding == 'SYMMETRIC' or padding == 'REFELECT':
         p = int(rate*(ksize-1)/2)
-        x = tf.pad(x, [[0,0], [p, p], [p, p], [0,0]], mode=padding)
+        x = tf.pad(x, [[0, 0], [p, p], [p, p], [0, 0]], mode=padding)
         padding = 'VALID'
     x = tf.layers.conv2d(
         x, cnum, ksize, stride, dilation_rate=rate,
