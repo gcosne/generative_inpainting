@@ -167,8 +167,8 @@ class InpaintCAModel(Model):
 
         batch_incomplete = batch_pos*(1.-mask)
         x1, x2, offset_flow = self.build_inpaint_net(
-            batch_incomplete, mask, config, reuse=reuse, training=training,
-            padding=config.PADDING)
+            batch_incomplete, mask, config, reuse=reuse,
+            training=training, padding=config.PADDING)
 
         if config.PRETRAIN_COARSE_NETWORK:
             batch_predicted = x1
@@ -183,8 +183,7 @@ class InpaintCAModel(Model):
 
         l1_alpha = config.COARSE_L1_ALPHA
         losses['l1_loss'] = l1_alpha * tf.reduce_mean(tf.abs(batch_pos - x1))
-        if not config.PRETRAIN_COARSE_NETWORK:
-            losses['l1_loss'] += tf.reduce_mean(tf.abs(batch_pos - x2))
+        losses['l1_loss'] += tf.reduce_mean(tf.abs(batch_pos - x2))
 
         if summary:
             scalar_summary('losses/l1_loss', losses['l1_loss'])
@@ -223,21 +222,26 @@ class InpaintCAModel(Model):
         if bbox is None:
             bbox = random_bbox(config)
         mask = bbox2mask(bbox, config, name=name+'mask_c')
+
         batch_pos = batch_data / 127.5 - 1.
         edges = None
+
         batch_incomplete = batch_pos*(1.-mask)
         # inpaint
         x1, x2, offset_flow = self.build_inpaint_net(
             batch_incomplete, mask, config, reuse=True,
             training=False, padding=config.PADDING)
+
         if config.PRETRAIN_COARSE_NETWORK:
             batch_predicted = x1
             logger.info('Set batch_predicted to x1.')
         else:
             batch_predicted = x2
             logger.info('Set batch_predicted to x2.')
+
         # apply mask and reconstruct
         batch_complete = batch_predicted*mask + batch_incomplete*(1.-mask)
+
         # global image visualization
         viz_img = [batch_pos, batch_incomplete, batch_complete]
         if offset_flow is not None:
@@ -247,6 +251,7 @@ class InpaintCAModel(Model):
         images_summary(
             tf.concat(viz_img, axis=2),
             name+'_raw_incomplete_complete', config.VIZ_MAX_OUT)
+
         return batch_complete
 
     def build_static_infer_graph(self, batch_data, config, name):
