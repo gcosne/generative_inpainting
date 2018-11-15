@@ -198,7 +198,6 @@ class InpaintCAModel(Model):
                 'raw_incomplete_predicted_complete', config.VIZ_MAX_OUT)
 
         # gan
-        batch_pos_neg = tf.concat([batch_pos, batch_complete], axis=0)
         if config.GAN == 'sn_patch_gan':
             # fake
             Dsn_Gz = self.build_sn_patch_gan_discriminator(
@@ -208,7 +207,7 @@ class InpaintCAModel(Model):
                 batch_pos, mask, training=training, reuse=tf.AUTO_REUSE)
             losses['g_loss'], losses['d_loss'] = gan_hinge_loss(Dsn_x, Dsn_Gz)
             losses['g_loss'] += losses['l1_loss']
-            scalar_summary('g_loss', losses['g_loss'])
+            scalar_summary('losses/g_loss', losses['g_loss'])
 
         g_vars = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, 'inpaint_net')

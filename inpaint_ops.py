@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import add_arg_scope
-from tensorflow.python.ops import init_ops
 
 from neuralgym.ops.layers import resize
 from neuralgym.ops.layers import *
@@ -40,7 +39,7 @@ def gated_deconv(x, cnum, name='upsample', padding='SAME', training=True):
     with tf.variable_scope(name):
         x = resize(x, func=tf.image.resize_nearest_neighbor)
         x = gated_conv(
-            x, cnum, 3, 1, name=name+'_conv', padding=padding,
+            x, cnum, 3, 1, name=name+'_gconv', padding=padding,
             training=training)
         return x
 
@@ -62,7 +61,7 @@ def conv2d_sn(
     activation=tf.nn.leaky_relu,
     use_bias=True,
     kernel_initializer=None,
-    bias_initializer=init_ops.zeros_initializer(),
+    bias_initializer=tf.zeros_initializer(),
     kernel_regularizer=None,
     bias_regularizer=None,
     activity_regularizer=None,
