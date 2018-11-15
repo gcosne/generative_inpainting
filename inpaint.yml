@@ -1,7 +1,7 @@
 # parameters
 DATASET: 'comic'  # 'tmnist', 'dtd', 'places2', 'celeba', 'imagenet', 'cityscapes'
 RANDOM_CROP: False
-VAL: False
+VAL: True
 LOG_DIR: comic
 MODEL_RESTORE: ''  # '20180115220926508503_jyugpu0_places2_NORMAL_wgan_gp_full_model'
 
@@ -9,7 +9,7 @@ GAN: 'sn_patch_gan' # 'wgan_gp', 'dcgan', 'lsgan', 'wgan_gp', 'one_wgan_gp'
 PRETRAIN_COARSE_NETWORK: False
 GAN_LOSS_ALPHA: 1 # 0.001 dcgan: 0.0008, wgan: 0.0005, onegan: 0.001
 WGAN_GP_LAMBDA: 10
-COARSE_L1_ALPHA: 1.2
+COARSE_L1_ALPHA: 1.0 # 1.2
 L1_LOSS_ALPHA: 1.2
 AE_LOSS_ALPHA: 1.2
 GAN_WITH_MASK: False
@@ -26,7 +26,7 @@ VIZ_MAX_OUT: 10
 GRADS_SUMMARY: False
 GRADIENT_CLIP: False
 GRADIENT_CLIP_VALUE: 0.1
-VAL_PSTEPS: 1000
+VAL_PSTEPS: 50
 
 # data
 DATA_FLIST:
