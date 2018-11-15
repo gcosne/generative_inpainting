@@ -1,8 +1,5 @@
 import logging
 import math
-from random import randint
-
-from skimage.draw import line
 
 import cv2
 import numpy as np
@@ -144,6 +141,41 @@ def gan_hinge_loss(dis_real, dis_fake, name='gan_hinge_loss'):
     return g_loss, d_loss
 
 
+def random_mask(config, name='mask'):
+    def npmask(height, width):
+        mask = np.zeros((height, width))
+        
+        num_vertex = np.random.randint(2, 12)
+        start_x = np.random.randint(width)
+        start_y = np.random.randint(height)
+
+        for i in range(num_vertex):
+            angle = 0.1+np.random.randint(20)
+            if i % 2 == 0:
+                angle = 2 * math.pi - angle
+            length = np.random.randint(10, 40)
+            brush_width = np.random.randint(5, 40)
+            end_x = (start_x + length * np.sin(angle)).astype(np.int32)
+            end_y = (start_y + length * np.cos(angle)).astype(np.int32)
+
+            cv2.line(mask, (start_y, start_x), (end_y, end_x), 1.0, brush_width)
+
+            start_x, start_y = end_x, end_y
+        return mask.reshape(mask.shape+(1,)).astype(np.float32)
+
+    with tf.variable_scope(name), tf.device('/cpu:0'):
+        img_shape = config.IMG_SHAPES
+        height = img_shape[0]
+        width = img_shape[1]
+        mask = tf.py_func(
+            npmask,
+            [height, width],
+            tf.float32, stateful=False)
+        mask.set_shape([1] + [height, width] + [1])
+
+    return mask
+
+
 @add_arg_scope
 def gen_conv(x, cnum, ksize, stride=1, rate=1, name='conv',
              padding='SAME', activation=tf.nn.elu, training=True):
@@ -259,15 +291,25 @@ def bbox2mask(bbox, config, name='mask'):
 
     """
     def npmask(bbox, height, width, delta_h, delta_w):
-        mask = np.zeros((1, height, width, 1), np.float32)
-        size = int((width + height) * 0.03)
-        for _ in range(randint(4, 10)):
-            x1, x2 = randint(1, width), randint(1, width)
-            y1, y2 = randint(1, height), randint(1, height)
-            thickness = randint(3, size)
-            rr, cc = line(x1, y1, x2, y2)
-            mask[:, rr, cc, :] = 1
-        return mask
+        mask = np.zeros((height, width))
+        
+        num_vertex = np.random.randint(2, 12)
+        start_x = np.random.randint(width)
+        start_y = np.random.randint(height)
+
+        for i in range(num_vertex):
+            angle = 0.1+np.random.randint(20)
+            if i % 2 == 0:
+                angle = 2 * math.pi - angle
+            length = np.random.randint(10, 40)
+            brush_width = np.random.randint(5, 40)
+            end_x = (start_x + length * np.sin(angle)).astype(np.int32)
+            end_y = (start_y + length * np.cos(angle)).astype(np.int32)
+
+            cv2.line(mask, (start_y, start_x), (end_y, end_x), 1.0, brush_width)
+
+            start_x, start_y = end_x, end_y
+        return mask.reshape(mask.shape+(1,)).astype(np.float32)
     with tf.variable_scope(name), tf.device('/cpu:0'):
         img_shape = config.IMG_SHAPES
         height = img_shape[0]
