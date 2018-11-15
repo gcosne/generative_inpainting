@@ -1,4 +1,6 @@
 import logging
+import math
+from random import randint
 
 import cv2
 import numpy as np
@@ -256,10 +258,12 @@ def bbox2mask(bbox, config, name='mask'):
     """
     def npmask(bbox, height, width, delta_h, delta_w):
         mask = np.zeros((1, height, width, 1), np.float32)
-        h = np.random.randint(delta_h//2+1)
-        w = np.random.randint(delta_w//2+1)
-        mask[:, bbox[0]+h:bbox[0]+bbox[2]-h,
-             bbox[1]+w:bbox[1]+bbox[3]-w, :] = 1.
+        size = int((width + height) * 0.03)
+        for _ in range(randint(4, 10)):
+            x1, x2 = randint(1, width), randint(1, width)
+            y1, y2 = randint(1, height), randint(1, height)
+            thickness = randint(3, size)
+            cv2.line(mask, (x1, y1), (x2, y2), (1), thickness)
         return mask
     with tf.variable_scope(name), tf.device('/cpu:0'):
         img_shape = config.IMG_SHAPES
