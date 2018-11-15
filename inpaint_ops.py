@@ -264,7 +264,7 @@ def bbox2mask(bbox, config, name='mask'):
             y1, y2 = randint(1, height), randint(1, height)
             thickness = randint(3, size)
             cv2.line(mask, (x1, y1), (x2, y2), (1), thickness)
-        return mask
+        return 1-mask
     with tf.variable_scope(name), tf.device('/cpu:0'):
         img_shape = config.IMG_SHAPES
         height = img_shape[0]
