@@ -1,7 +1,7 @@
 # parameters
 DATASET: 'comic'  # 'tmnist', 'dtd', 'places2', 'celeba', 'imagenet', 'cityscapes'
 RANDOM_CROP: False
-VAL: False
+VAL: True
 LOG_DIR: comic
 MODEL_RESTORE: ''  # '20180115220926508503_jyugpu0_places2_NORMAL_wgan_gp_full_model'
 
