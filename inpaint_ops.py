@@ -309,7 +309,7 @@ def bbox2mask(bbox, config, name='mask'):
             cv2.line(mask, (start_y, start_x), (end_y, end_x), 1.0, brush_width)
 
             start_x, start_y = end_x, end_y
-        return mask.reshape(mask.shape+(1,)).astype(np.float32)
+        return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
     with tf.variable_scope(name), tf.device('/cpu:0'):
         img_shape = config.IMG_SHAPES
         height = img_shape[0]
