@@ -292,7 +292,7 @@ def bbox2mask(bbox, config, name='mask'):
     """
     def npmask(bbox, height, width, delta_h, delta_w):
         mask = np.zeros((height, width))
-        
+
         num_vertex = np.random.randint(2, 12)
         start_x = np.random.randint(width)
         start_y = np.random.randint(height)
@@ -302,17 +302,19 @@ def bbox2mask(bbox, config, name='mask'):
             if i % 2 == 0:
                 angle = 2 * math.pi - angle
             length = np.random.randint(10, 40)
-            brush_width = np.random.randint(10, 40)
+            brush_width = np.random.randint(5, 40)
             end_x = (start_x + length * np.sin(angle)).astype(np.int32)
             end_y = (start_y + length * np.cos(angle)).astype(np.int32)
 
             cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
 
             start_x, start_y = end_x, end_y
-        if np.random.choice([False, True]):
+
+        if np.random.choice([True, False]):
             mask = np.fliplr(mask)
-        if np.random.choice([False, True]):
+        if np.random.choice([True, False]):
             mask = np.flipud(mask)
+
         return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
     with tf.variable_scope(name), tf.device('/cpu:0'):
         img_shape = config.IMG_SHAPES
