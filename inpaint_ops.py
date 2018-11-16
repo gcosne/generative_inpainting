@@ -150,18 +150,18 @@ def random_mask(config, name='mask'):
         start_y = np.random.randint(height)
 
         for i in range(num_vertex):
-            angle = 0.1+np.random.randint(20)
+            angle = np.random.uniform(20)
             if i % 2 == 0:
                 angle = 2 * math.pi - angle
             length = np.random.randint(10, 40)
-            brush_width = np.random.randint(5, 40)
+            brush_width = np.random.randint(10, 40)
             end_x = (start_x + length * np.sin(angle)).astype(np.int32)
             end_y = (start_y + length * np.cos(angle)).astype(np.int32)
 
-            cv2.line(mask, (start_y, start_x), (end_y, end_x), 1.0, brush_width)
+            cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
 
             start_x, start_y = end_x, end_y
-        return mask.reshape(mask.shape+(1,)).astype(np.float32)
+        return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
 
     with tf.variable_scope(name), tf.device('/cpu:0'):
         img_shape = config.IMG_SHAPES
@@ -298,17 +298,21 @@ def bbox2mask(bbox, config, name='mask'):
         start_y = np.random.randint(height)
 
         for i in range(num_vertex):
-            angle = 0.1+np.random.randint(20)
+            angle = np.random.uniform(20)
             if i % 2 == 0:
                 angle = 2 * math.pi - angle
             length = np.random.randint(10, 40)
-            brush_width = np.random.randint(5, 40)
+            brush_width = np.random.randint(10, 40)
             end_x = (start_x + length * np.sin(angle)).astype(np.int32)
             end_y = (start_y + length * np.cos(angle)).astype(np.int32)
 
-            cv2.line(mask, (start_y, start_x), (end_y, end_x), 1.0, brush_width)
+            cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
 
             start_x, start_y = end_x, end_y
+        if np.random.choice([False, True]):
+            mask = np.fliplr(mask)
+        if np.random.choice([False, True]):
+            mask = np.flipud(mask)
         return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
     with tf.variable_scope(name), tf.device('/cpu:0'):
         img_shape = config.IMG_SHAPES
