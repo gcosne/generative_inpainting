@@ -297,7 +297,7 @@ def bbox2mask(bbox, config, name='mask'):
     def npmask(bbox, height, width, delta_h, delta_w):
         mask = np.zeros((height, width))
         size = int((width + height) * 0.07)
-        num_strokes = np.random.randint(2, 12)
+        num_strokes = np.random.randint(2, 7)
         for _ in range(num_strokes):
             start_x, end_x = np.random.randint(width), np.random.randint(width)
             start_y, end_y = np.random.randint(height), np.random.randint(height)
