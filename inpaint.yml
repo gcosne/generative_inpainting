@@ -3,7 +3,7 @@ DATASET: 'comic'  # 'tmnist', 'dtd', 'places2', 'celeba', 'imagenet', 'cityscape
 RANDOM_CROP: False
 VAL: True
 LOG_DIR: comic
-MODEL_RESTORE: '20181116184525932686_75cbc28ddad6_comic_NORMAL_sn_patch_gan_comic'  # '20180115220926508503_jyugpu0_places2_NORMAL_wgan_gp_full_model'
+MODEL_RESTORE: ''  # '20180115220926508503_jyugpu0_places2_NORMAL_wgan_gp_full_model'
 
 GAN: 'sn_patch_gan' # 'wgan_gp', 'dcgan', 'lsgan', 'wgan_gp', 'one_wgan_gp'
 PRETRAIN_COARSE_NETWORK: False
