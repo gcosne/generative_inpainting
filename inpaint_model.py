@@ -44,7 +44,7 @@ class InpaintCAModel(Model):
         x = tf.concat([x, ones_x, ones_x*mask], axis=3)
 
         # two stage network
-        cnum = 24  # TODO: reduce? 35 - 25% = 24
+        cnum = 24
         with tf.variable_scope(name, reuse=reuse), \
                 arg_scope([gated_conv, gated_deconv, gen_conv],
                           training=training, padding=padding):
@@ -76,8 +76,8 @@ class InpaintCAModel(Model):
             # x = tf.stop_gradient(x)
             x = x*mask + xin*(1.-mask)
             x.set_shape(xin.get_shape().as_list())
-            # conv branch
             xnow = tf.concat([x, ones_x, ones_x*mask], axis=3)
+            # conv branch
             x = gated_conv(xnow, cnum, 5, 1, name='xconv1')
             x = gated_conv(x, cnum, 3, 2, name='xconv2_downsample')
             x = gated_conv(x, 2*cnum, 3, 1, name='xconv3')
@@ -102,7 +102,7 @@ class InpaintCAModel(Model):
             x = gated_conv(x, 4*cnum, 3, 1, name='pmconv10')
             pm = x
             x = tf.concat([x_hallu, pm], axis=3)
-
+            # refine upsample
             x = gated_conv(x, 4*cnum, 3, 1, name='allconv11')
             x = gated_conv(x, 4*cnum, 3, 1, name='allconv12')
             x = gated_deconv(x, 2*cnum, name='allconv13_upsample')
@@ -166,6 +166,7 @@ class InpaintCAModel(Model):
         mask = bbox2mask(bbox, config, name='mask_c')
 
         batch_incomplete = batch_pos*(1.-mask)
+        # inpaint
         x1, x2, offset_flow = self.build_inpaint_net(
             batch_incomplete, mask, config, reuse=reuse,
             training=training, padding=config.PADDING)
@@ -180,6 +181,7 @@ class InpaintCAModel(Model):
         losses = {}
         # apply mask and complete image
         batch_complete = batch_predicted*mask + batch_incomplete*(1.-mask)
+        coarse_complete = x1*mask + batch_incomplete*(1.-mask)
 
         l1_alpha = config.COARSE_L1_ALPHA
         losses['l1_loss'] = l1_alpha * tf.reduce_mean(tf.abs(batch_pos - x1))
@@ -187,7 +189,7 @@ class InpaintCAModel(Model):
 
         if summary:
             scalar_summary('losses/l1_loss', losses['l1_loss'])
-            viz_img = [batch_pos, batch_incomplete, batch_complete]
+            viz_img = [batch_pos, batch_incomplete, coarse_complete, batch_complete]
             if offset_flow is not None:
                 viz_img.append(
                     resize(offset_flow, scale=4,
@@ -241,9 +243,10 @@ class InpaintCAModel(Model):
 
         # apply mask and reconstruct
         batch_complete = batch_predicted*mask + batch_incomplete*(1.-mask)
+        coarse_complete = x1*mask + batch_incomplete*(1.-mask)
 
         # global image visualization
-        viz_img = [batch_pos, batch_incomplete, batch_complete]
+        viz_img = [batch_pos, batch_incomplete, coarse_complete, batch_complete]
         if offset_flow is not None:
             viz_img.append(
                 resize(offset_flow, scale=4,
