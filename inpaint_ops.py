@@ -299,8 +299,8 @@ def bbox2mask(bbox, config, name='mask'):
         size = int((width + height) * 0.07)
         num_strokes = np.random.randint(2, 12)
         for _ in range(num_strokes):
-            start_x, end_x = np.random.randint(width)
-            start_y, end_y = np.random.randint(height)
+            start_x, end_x = np.random.randint(width), np.random.randint(width)
+            start_y, end_y = np.random.randint(height), np.random.randint(height)
             brush_width = np.random.randint(5, size)
             cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
         return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
