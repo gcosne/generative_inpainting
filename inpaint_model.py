@@ -149,7 +149,7 @@ class InpaintCAModel(Model):
                                          reuse=False, training=True):
         with tf.variable_scope('discriminator', reuse=reuse):
             cnum = 64
-            x = conv2d_sn(x, cnum, name='sn_conv1')
+            x = conv2d_sn(x, cnum, strides=2, name='sn_conv1')
             x = conv2d_sn(x, cnum*2, strides=2, name='sn_conv2')
             x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv3')
             x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv4')
