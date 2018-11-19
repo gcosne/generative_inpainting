@@ -147,7 +147,7 @@ def random_mask(config, name='mask'):
                min_vertex=6, max_vertex=20,
                min_length_divisor=18, max_length_divisor=12,
                min_brush_width_divisor=18, max_brush_width_divisor=6):
-        mask = np.zeros((height, width), np.uint8)
+        mask = np.zeros((height, width))
         
         min_length = height // min_length_divisor
         max_length = height // max_length_divisor
@@ -165,10 +165,10 @@ def random_mask(config, name='mask'):
                 angle = np.random.uniform(max_angle)
                 length = np.random.uniform(min_length, max_length)
                 brush_width = np.random.randint(min_brush_width, max_brush_width+1)
-                end_x = round(start_x + length * np.sin(angle))
-                end_y = round(start_y + length * np.cos(angle))
+                end_x (start_x + length * np.sin(angle)).astype(np.int32)
+                end_y = (start_y + length * np.cos(angle)).astype(np.int32)
 
-                cv2.line(mask, (start_x, start_y), (end_x, end_y), 1, brush_width)
+                cv2.line(mask, (start_x, start_y), (end_x, end_y), 1., brush_width)
 
                 start_x, start_y = end_x, end_y
         mask[mask > 0.5] = 1
