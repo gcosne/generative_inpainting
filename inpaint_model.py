@@ -15,8 +15,7 @@ from neuralgym.ops.gan_ops import random_interpolates
 
 from inpaint_ops import conv2d_sn, gan_hinge_loss
 from inpaint_ops import gated_conv, gated_deconv
-from inpaint_ops import random_bbox, bbox2mask, local_patch
-from inpaint_ops import spatial_discounting_mask
+from inpaint_ops import random_mask
 from inpaint_ops import resize_mask_like, contextual_attention
 
 
@@ -128,8 +127,7 @@ class InpaintCAModel(Model):
         batch_pos = batch_data / 127.5 - 1.
 
         # generate mask, 1 represents masked point
-        bbox = random_bbox(config)
-        mask = bbox2mask(bbox, config, name='mask_c')
+        mask = random_mask(config)
 
         batch_incomplete = batch_pos*(1.-mask)
         # inpaint
@@ -182,14 +180,10 @@ class InpaintCAModel(Model):
             tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator')
         return g_vars, d_vars, losses
 
-    def build_infer_graph(self, batch_data, config, bbox=None, name='val'):
+    def build_infer_graph(self, batch_data, config, name='val'):
         """
         """
-        config.MAX_DELTA_HEIGHT = 0
-        config.MAX_DELTA_WIDTH = 0
-        if bbox is None:
-            bbox = random_bbox(config)
-        mask = bbox2mask(bbox, config, name=name+'mask_c')
+        mask = random_mask(config, name=name+'mask_c')
 
         batch_pos = batch_data / 127.5 - 1.
         edges = None
@@ -227,9 +221,7 @@ class InpaintCAModel(Model):
         """
         """
         # generate mask, 1 represents masked point
-        bbox = (tf.constant(config.HEIGHT//2), tf.constant(config.WIDTH//2),
-                tf.constant(config.HEIGHT), tf.constant(config.WIDTH))
-        return self.build_infer_graph(batch_data, config, bbox, name)
+        return self.build_infer_graph(batch_data, config, name)
 
     def build_server_graph(self, batch_data, reuse=False, is_training=False):
         """
