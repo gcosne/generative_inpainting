@@ -168,7 +168,7 @@ def random_mask(config, name='mask'):
                 end_x = round(start_x + length * np.sin(angle))
                 end_y = round(start_y + length * np.cos(angle))
 
-                cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
+                cv2.line(mask, (start_y, start_x), (end_y, end_x), 1, brush_width)
 
                 start_x, start_y = end_x, end_y
         mask[mask > 0.5] = 1
