@@ -158,8 +158,8 @@ def random_mask(config, name='mask'):
 
         for i in range(num_stroke):
             num_vertex = np.random.randint(min_vertex, max_vertex+1)
-            start_x = np.random.randint(width//4, 3*width//4)
-            start_y = np.random.randint(height//4, 3*height//4)
+            start_x = np.random.randint(width)
+            start_y = np.random.randint(height)
 
             for _ in range(num_vertex):
                 angle = np.random.uniform(max_angle)
@@ -171,8 +171,6 @@ def random_mask(config, name='mask'):
                 cv2.line(mask, (start_x, start_y), (end_x, end_y), 1., brush_width)
 
                 start_x, start_y = end_x, end_y
-        mask[mask > 0.5] = 1
-        mask[mask < 0.5] = 0
         return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
 
     with tf.variable_scope(name), tf.device('/cpu:0'):
