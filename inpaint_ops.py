@@ -26,12 +26,12 @@ def gated_conv(x, cnum, ksize, stride=1, rate=1, name='gconv',
         padding = 'VALID'
     feature = tf.layers.conv2d(
         x, cnum, ksize, stride, dilation_rate=rate,
-        activation=activation, padding=padding, name=name)
+        activation=activation, padding=padding, name=name+'_feature')
     gating = tf.layers.conv2d(
         x, cnum, ksize, stride, dilation_rate=rate,
         activation=tf.sigmoid, padding=padding,
-        name='g_'+name)
-    x = feature * gating
+        name=name+'_gating')
+    x = tf.multiply(feature, gating)
     return x
 
 
