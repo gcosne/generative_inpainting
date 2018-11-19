@@ -15,7 +15,6 @@ from neuralgym.ops.gan_ops import random_interpolates
 
 from inpaint_ops import conv2d_sn, gan_hinge_loss
 from inpaint_ops import gated_conv, gated_deconv
-from inpaint_ops import gen_conv, gen_deconv, dis_conv
 from inpaint_ops import random_bbox, bbox2mask, local_patch
 from inpaint_ops import spatial_discounting_mask
 from inpaint_ops import resize_mask_like, contextual_attention
@@ -46,7 +45,7 @@ class InpaintCAModel(Model):
         # two stage network
         cnum = 24
         with tf.variable_scope(name, reuse=reuse), \
-                arg_scope([gated_conv, gated_deconv, gen_conv],
+                arg_scope([gated_conv, gated_deconv],
                           training=training, padding=padding):
             # stage1
             x = gated_conv(x, cnum, 5, 1, name='conv1')
@@ -66,8 +65,7 @@ class InpaintCAModel(Model):
             x = gated_conv(x, 2*cnum, 3, 1, name='conv14')
             x = gated_deconv(x, cnum, name='conv15_upsample')
             x = gated_conv(x, cnum//2, 3, 1, name='conv16')
-            # last layer: no activation; not gated
-            x = gen_conv(x, 3, 3, 1, activation=None, name='conv17')
+            x = gated_conv(x, 3, 3, 1, activation=None, name='conv17')
             x = tf.clip_by_value(x, -1., 1.)
             x_stage1 = x
             # return x_stage1, None, None
@@ -102,48 +100,16 @@ class InpaintCAModel(Model):
             x = gated_conv(x, 4*cnum, 3, 1, name='pmconv10')
             pm = x
             x = tf.concat([x_hallu, pm], axis=3)
-            # refine upsample
+            # upsample
             x = gated_conv(x, 4*cnum, 3, 1, name='allconv11')
             x = gated_conv(x, 4*cnum, 3, 1, name='allconv12')
             x = gated_deconv(x, 2*cnum, name='allconv13_upsample')
             x = gated_conv(x, 2*cnum, 3, 1, name='allconv14')
             x = gated_deconv(x, cnum, name='allconv15_upsample')
             x = gated_conv(x, cnum//2, 3, 1, name='allconv16')
-            # last layer: no activation; not gated
-            x = gen_conv(x, 3, 3, 1, activation=None, name='allconv17')
+            x = gated_conv(x, 3, 3, 1, activation=None, name='allconv17')
             x_stage2 = tf.clip_by_value(x, -1., 1.)
         return x_stage1, x_stage2, offset_flow
-
-    def build_wgan_local_discriminator(self, x, reuse=False, training=True):
-        with tf.variable_scope('discriminator_local', reuse=reuse):
-            cnum = 64
-            x = dis_conv(x, cnum, name='conv1', training=training)
-            x = dis_conv(x, cnum*2, name='conv2', training=training)
-            x = dis_conv(x, cnum*4, name='conv3', training=training)
-            x = dis_conv(x, cnum*8, name='conv4', training=training)
-            x = flatten(x, name='flatten')
-            return x
-
-    def build_wgan_global_discriminator(self, x, reuse=False, training=True):
-        with tf.variable_scope('discriminator_global', reuse=reuse):
-            cnum = 64
-            x = dis_conv(x, cnum, name='conv1', training=training)
-            x = dis_conv(x, cnum*2, name='conv2', training=training)
-            x = dis_conv(x, cnum*4, name='conv3', training=training)
-            x = dis_conv(x, cnum*4, name='conv4', training=training)
-            x = flatten(x, name='flatten')
-            return x
-
-    def build_wgan_discriminator(self, batch_local, batch_global,
-                                 reuse=False, training=True):
-        with tf.variable_scope('discriminator', reuse=reuse):
-            dlocal = self.build_wgan_local_discriminator(
-                batch_local, reuse=reuse, training=training)
-            dglobal = self.build_wgan_global_discriminator(
-                batch_global, reuse=reuse, training=training)
-            dout_local = tf.layers.dense(dlocal, 1, name='dout_local_fc')
-            dout_global = tf.layers.dense(dglobal, 1, name='dout_global_fc')
-            return dout_local, dout_global
 
     def build_sn_patch_gan_discriminator(self, x, mask,
                                          reuse=False, training=True):
