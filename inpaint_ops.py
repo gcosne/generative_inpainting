@@ -142,29 +142,37 @@ def gan_hinge_loss(dis_real, dis_fake, name='gan_hinge_loss'):
 
 
 def random_mask(config, name='mask'):
-    def npmask(height, width):
+    def npmask(height, width,
+               max_stroke=3,
+               min_vertex=6, max_vertex=20,
+               min_length_divisor=18, max_length_divisor=12,
+               min_brush_width_divisor=18, max_brush_width_divisor=6):
         mask = np.zeros((height, width))
         
-        num_vertex = np.random.randint(2, 12)
-        start_x = np.random.randint(width)
-        start_y = np.random.randint(height)
+        min_length = height // min_length_divisor
+        max_length = height // max_length_divisor
+        min_brush_width = height // min_brush_width_divisor
+        max_brush_width = height // max_brush_width_divisor
+        max_angle = 2 * math.pi
+        num_stroke = np.random.randint(1, max_stroke+1)
 
-        for i in range(num_vertex):
-            angle = np.random.uniform(20)
-            if i % 2 == 0:
-                angle = 2 * math.pi - angle
-            length = np.random.randint(10, 40)
-            brush_width = np.random.randint(10, 40)
-            end_x = (start_x + length * np.sin(angle)).astype(np.int32)
-            end_y = (start_y + length * np.cos(angle)).astype(np.int32)
+        for i in range(num_stroke):
+            num_vertex = np.random.randint(min_vertex, max_vertex+1)
+            start_x = np.random.randint(width//4, 3*width//4)
+            start_y = np.random.randint(height//4, 3*height//4)
 
-            cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
+            for _ in range(num_vertex):
+                angle = np.random.uniform(max_angle)
+                length = np.random.uniform(min_length, max_length)
+                brush_width = np.random.randint(min_brush_width, max_brush_width+1)
+                end_x = round(start_x + length * np.sin(angle))
+                end_y = round(start_y + length * np.cos(angle))
 
-            start_x, start_y = end_x, end_y
-        if np.random.choice([True, False]):
-            mask = np.fliplr(mask)
-        if np.random.choice([True, False]):
-            mask = np.flipud(mask)
+                cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
+
+                start_x, start_y = end_x, end_y
+        mask[mask > 0.5] = 1
+        mask[mask < 0.5] = 0
         return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
 
     with tf.variable_scope(name), tf.device('/cpu:0'):
@@ -406,12 +414,14 @@ def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
     raw_fs = tf.shape(f)
     raw_int_fs = f.get_shape().as_list()
     raw_int_bs = b.get_shape().as_list()
+
     # extract patches from background with stride and rate
     kernel = 2*rate
     raw_w = tf.extract_image_patches(
         b, [1,kernel,kernel,1], [1,rate*stride,rate*stride,1], [1,1,1,1], padding='SAME')
     raw_w = tf.reshape(raw_w, [raw_int_bs[0], -1, kernel, kernel, raw_int_bs[3]])
     raw_w = tf.transpose(raw_w, [0, 2, 3, 4, 1])  # transpose to b*k*k*c*hw
+
     # downscaling foreground option: downscaling both foreground and
     # background for matching and use original background for reconstruction.
     f = resize(f, scale=1./rate, func=tf.image.resize_nearest_neighbor)
@@ -421,6 +431,7 @@ def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
     fs = tf.shape(f)
     int_fs = f.get_shape().as_list()
     f_groups = tf.split(f, int_fs[0], axis=0)
+
     # from t(H*W*C) to w(b*k*k*c*h*w)
     bs = tf.shape(b)
     int_bs = b.get_shape().as_list()
@@ -428,6 +439,7 @@ def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
         b, [1,ksize,ksize,1], [1,stride,stride,1], [1,1,1,1], padding='SAME')
     w = tf.reshape(w, [int_fs[0], -1, ksize, ksize, int_fs[3]])
     w = tf.transpose(w, [0, 2, 3, 4, 1])  # transpose to b*k*k*c*hw
+
     # process mask
     if mask is None:
         mask = tf.zeros([1, bs[1], bs[2], 1])
@@ -437,6 +449,7 @@ def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
     m = tf.transpose(m, [0, 2, 3, 4, 1])  # transpose to b*k*k*c*hw
     m = m[0]
     mm = tf.cast(tf.equal(tf.reduce_mean(m, axis=[0,1,2], keep_dims=True), 0.), tf.float32)
+
     w_groups = tf.split(w, int_bs[0], axis=0)
     raw_w_groups = tf.split(raw_w, int_bs[0], axis=0)
     y = []
