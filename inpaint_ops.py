@@ -144,8 +144,8 @@ def gan_hinge_loss(dis_real, dis_fake, name='gan_hinge_loss'):
 def random_mask(config, name='mask'):
     def npmask(height, width,
                max_stroke=3,
-               min_vertex=6, max_vertex=20,
-               min_length_divisor=18, max_length_divisor=12,
+               min_vertex=4, max_vertex=20,
+               min_length_divisor=18, max_length_divisor=10,
                min_brush_width_divisor=18, max_brush_width_divisor=6):
         mask = np.zeros((height, width))
         
@@ -161,14 +161,16 @@ def random_mask(config, name='mask'):
             start_x = np.random.randint(width)
             start_y = np.random.randint(height)
 
-            for _ in range(num_vertex):
+            for j in range(num_vertex):
                 angle = np.random.uniform(max_angle)
+                if j % 2 == 0:
+                    angle = 2 * math.pi - angle
                 length = np.random.uniform(min_length, max_length)
                 brush_width = np.random.randint(min_brush_width, max_brush_width+1)
                 end_x = (start_x + length * np.sin(angle)).astype(np.int32)
                 end_y = (start_y + length * np.cos(angle)).astype(np.int32)
 
-                cv2.line(mask, (start_x, start_y), (end_x, end_y), 1., brush_width)
+                cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
 
                 start_x, start_y = end_x, end_y
         return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
