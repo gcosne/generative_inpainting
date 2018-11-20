@@ -14,7 +14,7 @@ from neuralgym.ops.gan_ops import gan_wgan_loss, gradients_penalty
 from neuralgym.ops.gan_ops import random_interpolates
 
 from inpaint_ops import conv2d_sn, gan_hinge_loss
-from inpaint_ops import gated_conv, gated_deconv, gen_conv
+from inpaint_ops import gated_conv, gated_deconv
 from inpaint_ops import random_mask
 from inpaint_ops import resize_mask_like, contextual_attention
 
@@ -44,7 +44,7 @@ class InpaintCAModel(Model):
         # two stage network
         cnum = 24
         with tf.variable_scope(name, reuse=reuse), \
-                arg_scope([gated_conv, gated_deconv, gen_conv],
+                arg_scope([gated_conv, gated_deconv],
                           training=training, padding=padding):
             # stage1
             x = gated_conv(x, cnum, 5, 1, name='conv1')
@@ -64,7 +64,7 @@ class InpaintCAModel(Model):
             x = gated_conv(x, 2*cnum, 3, 1, name='conv14')
             x = gated_deconv(x, cnum, name='conv15_upsample')
             x = gated_conv(x, cnum//2, 3, 1, name='conv16')
-            x = gen_conv(x, 3, 3, 1, activation=None, name='conv17')
+            x = gated_conv(x, 3, 3, 1, activation=None, name='conv17')
             x = tf.clip_by_value(x, -1., 1.)
             x_stage1 = x
             # return x_stage1, None, None
@@ -106,7 +106,7 @@ class InpaintCAModel(Model):
             x = gated_conv(x, 2*cnum, 3, 1, name='allconv14')
             x = gated_deconv(x, cnum, name='allconv15_upsample')
             x = gated_conv(x, cnum//2, 3, 1, name='allconv16')
-            x = gen_conv(x, 3, 3, 1, activation=None, name='allconv17')
+            x = gated_conv(x, 3, 3, 1, activation=None, name='allconv17')
             x_stage2 = tf.clip_by_value(x, -1., 1.)
         return x_stage1, x_stage2, offset_flow
 
@@ -120,6 +120,7 @@ class InpaintCAModel(Model):
             x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv4')
             x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv5')
             x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv6')
+            x = flatten(x, name='flatten')
             return x
 
     def build_graph_with_losses(self, batch_data, config, training=True,
