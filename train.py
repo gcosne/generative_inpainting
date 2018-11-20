@@ -65,8 +65,8 @@ if __name__ == "__main__":
     lr = tf.get_variable(
         'lr', shape=[], trainable=False,
         initializer=tf.constant_initializer(1e-4))
-    d_optimizer = tf.train.AdamOptimizer(lr, beta1=0.5, beta2=0.9)
-    g_optimizer = d_optimizer
+    d_optimizer = tf.train.AdamOptimizer(4*lr, beta1=0.5, beta2=0.9)
+    g_optimizer = tf.train.AdamOptimizer(lr, beta1=0.5, beta2=0.9)
 
     # gradient processor
     if config.GRADIENT_CLIP:
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         pstep=1,
         optimizer=d_optimizer,
         var_list=d_vars,
-        max_iters=5,
+        max_iters=1,
         graph_def=multigpu_graph_def,
         graph_def_kwargs={
             'model': model, 'data': data, 'config': config, 'loss_type': 'd'},
