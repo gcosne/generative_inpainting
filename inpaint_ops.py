@@ -182,7 +182,7 @@ def random_mask(config, name='mask'):
         mask = tf.py_func(
             npmask,
             [height, width],
-            tf.float32, stateful=False)
+            tf.float32, stateful=True)
         mask.set_shape([1] + [height, width] + [1])
 
     return mask
@@ -243,103 +243,6 @@ def gen_deconv(x, cnum, name='upsample', padding='SAME', training=True):
     return x
 
 
-@add_arg_scope
-def dis_conv(x, cnum, ksize=5, stride=2, name='conv', training=True):
-    """Define conv for discriminator.
-    Activation is set to leaky_relu.
-
-    Args:
-        x: Input.
-        cnum: Channel number.
-        ksize: Kernel size.
-        Stride: Convolution stride.
-        name: Name of layers.
-        training: If current graph is for training or inference, used for bn.
-
-    Returns:
-        tf.Tensor: output
-
-    """
-    x = tf.layers.conv2d(x, cnum, ksize, stride, 'SAME', name=name)
-    x = tf.nn.leaky_relu(x)
-    return x
-
-
-def random_bbox(config):
-    """Generate a random tlhw with configuration.
-
-    Args:
-        config: Config should have configuration including IMG_SHAPES,
-            VERTICAL_MARGIN, HEIGHT, HORIZONTAL_MARGIN, WIDTH.
-
-    Returns:
-        tuple: (top, left, height, width)
-
-    """
-    img_shape = config.IMG_SHAPES
-    img_height = img_shape[0]
-    img_width = img_shape[1]
-    maxt = img_height - config.VERTICAL_MARGIN - config.HEIGHT
-    maxl = img_width - config.HORIZONTAL_MARGIN - config.WIDTH
-    t = tf.random_uniform(
-        [], minval=config.VERTICAL_MARGIN, maxval=maxt, dtype=tf.int32)
-    l = tf.random_uniform(
-        [], minval=config.HORIZONTAL_MARGIN, maxval=maxl, dtype=tf.int32)
-    h = tf.constant(config.HEIGHT)
-    w = tf.constant(config.WIDTH)
-    return (t, l, h, w)
-
-
-def bbox2mask(bbox, config, name='mask'):
-    """Generate mask tensor from bbox.
-
-    Args:
-        bbox: configuration tuple, (top, left, height, width)
-        config: Config should have configuration including IMG_SHAPES,
-            MAX_DELTA_HEIGHT, MAX_DELTA_WIDTH.
-
-    Returns:
-        tf.Tensor: output with shape [1, H, W, 1]
-
-    """
-    def npmask(bbox, height, width, delta_h, delta_w):
-        mask = np.zeros((height, width))
-        size = int((width + height) * 0.07)
-        num_strokes = np.random.randint(2, 7)
-        for _ in range(num_strokes):
-            start_x, end_x = np.random.randint(width), np.random.randint(width)
-            start_y, end_y = np.random.randint(height), np.random.randint(height)
-            brush_width = np.random.randint(5, size)
-            cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
-        return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
-    with tf.variable_scope(name), tf.device('/cpu:0'):
-        img_shape = config.IMG_SHAPES
-        height = img_shape[0]
-        width = img_shape[1]
-        mask = tf.py_func(
-            npmask,
-            [bbox, height, width,
-             config.MAX_DELTA_HEIGHT, config.MAX_DELTA_WIDTH],
-            tf.float32, stateful=False)
-        mask.set_shape([1] + [height, width] + [1])
-    return mask
-
-
-def local_patch(x, bbox):
-    """Crop local patch according to bbox.
-
-    Args:
-        x: input
-        bbox: (top, left, height, width)
-
-    Returns:
-        tf.Tensor: local patch
-
-    """
-    x = tf.image.crop_to_bounding_box(x, bbox[0], bbox[1], bbox[2], bbox[3])
-    return x
-
-
 def resize_mask_like(mask, x):
     """Resize mask like shape of x.
 
@@ -355,38 +258,6 @@ def resize_mask_like(mask, x):
         mask, to_shape=x.get_shape().as_list()[1:3],
         func=tf.image.resize_nearest_neighbor)
     return mask_resize
-
-
-def spatial_discounting_mask(config):
-    """Generate spatial discounting mask constant.
-
-    Spatial discounting mask is first introduced in publication:
-        Generative Image Inpainting with Contextual Attention, Yu et al.
-
-    Args:
-        config: Config should have configuration including HEIGHT, WIDTH,
-            DISCOUNTED_MASK.
-
-    Returns:
-        tf.Tensor: spatial discounting mask
-
-    """
-    gamma = config.SPATIAL_DISCOUNTING_GAMMA
-    shape = [1, config.HEIGHT, config.WIDTH, 1]
-    if config.DISCOUNTED_MASK:
-        logger.info('Use spatial discounting l1 loss.')
-        mask_values = np.ones((config.HEIGHT, config.WIDTH))
-        for i in range(config.HEIGHT):
-            for j in range(config.WIDTH):
-                mask_values[i, j] = max(
-                    gamma**min(i, config.HEIGHT-i),
-                    gamma**min(j, config.WIDTH-j))
-        mask_values = np.expand_dims(mask_values, 0)
-        mask_values = np.expand_dims(mask_values, 3)
-        mask_values = mask_values
-    else:
-        mask_values = np.ones(shape)
-    return tf.constant(mask_values, dtype=tf.float32, shape=shape)
 
 
 def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
@@ -488,16 +359,19 @@ def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
         yi = tf.nn.conv2d_transpose(yi, wi_center, tf.concat([[1], raw_fs[1:]], axis=0), strides=[1,rate,rate,1]) / 4.
         y.append(yi)
         offsets.append(offset)
+
     y = tf.concat(y, axis=0)
     y.set_shape(raw_int_fs)
     offsets = tf.concat(offsets, axis=0)
     offsets.set_shape(int_bs[:3] + [2])
+
     # case1: visualize optical flow: minus current position
     h_add = tf.tile(tf.reshape(tf.range(bs[1]), [1, bs[1], 1, 1]), [bs[0], 1, bs[2], 1])
     w_add = tf.tile(tf.reshape(tf.range(bs[2]), [1, 1, bs[2], 1]), [bs[0], bs[1], 1, 1])
     offsets = offsets - tf.concat([h_add, w_add], axis=3)
     # to flow image
     flow = flow_to_image_tf(offsets)
+
     # # case2: visualize which pixels are attended
     # flow = highlight_flow_tf(offsets * tf.cast(mask, tf.int32))
     if rate != 1:
@@ -672,16 +546,6 @@ def highlight_flow_tf(flow, name='flow_to_image'):
         img.set_shape(flow.get_shape().as_list()[0:-1]+[3])
         img = img / 127.5 - 1.
         return img
-
-
-def image2edge(image):
-    """Convert image to edges.
-    """
-    out = []
-    for i in range(image.shape[0]):
-        img = cv2.Laplacian(image[i, :, :, :], cv2.CV_64F, ksize=3, scale=2)
-        out.append(img)
-    return np.float32(np.uint8(out))
 
 
 if __name__ == "__main__":
