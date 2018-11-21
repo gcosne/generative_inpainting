@@ -112,15 +112,17 @@ class InpaintCAModel(Model):
 
     def build_sn_patch_gan_discriminator(self, x, mask,
                                          reuse=False, training=True):
+        ones_x = tf.ones_like(x)[:, :, :, 0:1]
+        x = tf.concat([x, ones_x, ones_x*mask], axis=3)
         with tf.variable_scope('discriminator', reuse=reuse):
             cnum = 64
-            x = conv2d_sn(x, cnum, strides=2, name='sn_conv1')
-            x = conv2d_sn(x, cnum*2, strides=2, name='sn_conv2')
-            x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv3')
-            x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv4')
-            x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv5')
-            x = conv2d_sn(x, cnum*4, strides=2, name='sn_conv6')
-            x = flatten(x, name='flatten')
+            x = conv2d_sn(x, cnum, name='sn_conv1')
+            x = conv2d_sn(x, cnum*2, name='sn_conv2')
+            x = conv2d_sn(x, cnum*4, name='sn_conv3')
+            x = conv2d_sn(x, cnum*4, name='sn_conv4')
+            x = conv2d_sn(x, cnum*4, name='sn_conv5')
+            x = conv2d_sn(x, cnum*4, name='sn_conv6')
+            print(x.get_shape())
             return x
 
     def build_graph_with_losses(self, batch_data, config, training=True,

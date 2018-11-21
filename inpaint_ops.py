@@ -55,7 +55,7 @@ def conv2d_sn(
     inputs,
     filters,
     kernel_size=5,
-    strides=(1, 1),
+    strides=2,
     padding='SAME',
     data_format='channels_last',
     dilation_rate=(1, 1),
