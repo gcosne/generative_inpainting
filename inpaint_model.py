@@ -122,7 +122,6 @@ class InpaintCAModel(Model):
             x = conv2d_sn(x, cnum*4, name='sn_conv4')
             x = conv2d_sn(x, cnum*4, name='sn_conv5')
             x = conv2d_sn(x, cnum*4, name='sn_conv6')
-            print(x.get_shape())
             return x
 
     def build_graph_with_losses(self, batch_data, config, training=True,
@@ -173,8 +172,10 @@ class InpaintCAModel(Model):
             # real
             Dsn_x = self.build_sn_patch_gan_discriminator(
                 batch_pos, mask, training=training, reuse=tf.AUTO_REUSE)
-            losses['g_loss'], losses['d_loss'] = gan_hinge_loss(Dsn_x, Dsn_Gz)
-            losses['g_loss'] += losses['l1_loss']
+            g_loss, d_loss = gan_hinge_loss(Dsn_x, Dsn_Gz)
+            losses['g_loss'] = config.GAN_LOSS_ALPHA * g_loss
+            losses['g_loss'] += config.L1_LOSS_ALPHA * losses['l1_loss']
+            losses['d_loss'] = d_loss
             scalar_summary('losses/g_loss', losses['g_loss'])
 
         g_vars = tf.get_collection(
