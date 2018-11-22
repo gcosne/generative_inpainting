@@ -113,7 +113,7 @@ class InpaintCAModel(Model):
     def build_sn_patch_gan_discriminator(self, x, mask,
                                          reuse=False, training=True):
         ones_x = tf.ones_like(x)[:, :, :, 0:1]
-        x = tf.concat([x, ones_x, ones_x*mask], axis=3)
+        x = tf.concat([x, ones_x*mask], axis=3)
         with tf.variable_scope('discriminator', reuse=reuse):
             cnum = 64
             x = conv2d_sn(x, cnum, name='sn_conv1')
