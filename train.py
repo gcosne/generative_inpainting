@@ -65,8 +65,8 @@ if __name__ == "__main__":
     lr = tf.get_variable(
         'lr', shape=[], trainable=False,
         initializer=tf.constant_initializer(1e-4))
-    d_optimizer = tf.train.AdamOptimizer(4*lr, beta1=0.5, beta2=0.9)
-    g_optimizer = tf.train.AdamOptimizer(lr, beta1=0.5, beta2=0.9)
+    d_optimizer = tf.train.AdamOptimizer(lr, beta1=0.5, beta2=0.9)
+    g_optimizer = d_optimizer
 
     # gradient processor
     if config.GRADIENT_CLIP:
