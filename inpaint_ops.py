@@ -1,5 +1,6 @@
 import logging
 import math
+from random import getrandbits
 
 import cv2
 import numpy as np
@@ -143,7 +144,7 @@ def gan_hinge_loss(dis_real, dis_fake, name='gan_hinge_loss'):
 
 def random_mask(config, name='mask'):
     def npmask(height, width,
-               max_stroke=3,
+               max_stroke=4,
                min_vertex=4, max_vertex=20,
                min_length_divisor=18, max_length_divisor=10,
                min_brush_width_divisor=18, max_brush_width_divisor=6):
@@ -173,6 +174,10 @@ def random_mask(config, name='mask'):
                 cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
 
                 start_x, start_y = end_x, end_y
+        if getrandbits(1):
+            mask = np.fliplr(mask)
+        if getrandbits(1):
+            mask = np.flipud(mask)
         return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
 
     with tf.variable_scope(name), tf.device('/cpu:0'):
