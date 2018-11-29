@@ -196,9 +196,6 @@ def random_mask(config, name='mask'):
 
 def data_augument(img):
     if getrandbits(1):
-        angle = np.random.uniform(-20, 20)
-        img = rotate(img, angle, mode='nearest')
-    if getrandbits(1):
        img = np.fliplr(img)
     if getrandbits(1):
        img = np.flipud(img)
