@@ -7,6 +7,7 @@ import tensorflow as tf
 import neuralgym as ng
 
 from inpaint_model import InpaintCAModel
+from inpaint_ops import data_augument
 
 
 logger = logging.getLogger()
@@ -40,7 +41,8 @@ if __name__ == "__main__":
     with open(config.DATA_FLIST[config.DATASET][0]) as f:
         fnames = f.read().splitlines()
     data = ng.data.DataFromFNames(
-        fnames, config.IMG_SHAPES, random_crop=config.RANDOM_CROP)
+        fnames, config.IMG_SHAPES, random_crop=config.RANDOM_CROP,
+        fn_preprocess=data_augument)
     images = data.data_pipeline(config.BATCH_SIZE)
 
     # main model

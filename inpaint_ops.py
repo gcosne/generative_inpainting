@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import add_arg_scope
+from scipy.ndimage.interpolation import rotate
 
 from neuralgym.ops.layers import resize
 from neuralgym.ops.layers import *
@@ -191,6 +192,17 @@ def random_mask(config, name='mask'):
         mask.set_shape([1] + [height, width] + [1])
 
     return mask
+
+
+def data_augument(img):
+    if getrandbits(1):
+        angle = np.random.uniform(-20, 20)
+        img = rotate(img, angle, mode='nearest')
+    if getrandbits(1):
+       img = np.fliplr(img)
+    if getrandbits(1):
+       img = np.flipud(img)
+    return img
 
 
 @add_arg_scope
