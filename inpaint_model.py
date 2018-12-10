@@ -64,7 +64,7 @@ class InpaintCAModel(Model):
             x = gated_conv(x, 2*cnum, 3, 1, name='conv14')
             x = gated_deconv(x, cnum, name='conv15_upsample')
             x = gated_conv(x, cnum//2, 3, 1, name='conv16')
-            x = gen_conv(x, 3, 3, 1, activation=None, name='conv17')
+            x = gen_conv(x, 3, 3, 1, activation=tf.nn.tanh, name='conv17')
             x = tf.clip_by_value(x, -1., 1.)
             x_stage1 = x
             # return x_stage1, None, None
@@ -106,7 +106,7 @@ class InpaintCAModel(Model):
             x = gated_conv(x, 2*cnum, 3, 1, name='allconv14')
             x = gated_deconv(x, cnum, name='allconv15_upsample')
             x = gated_conv(x, cnum//2, 3, 1, name='allconv16')
-            x = gen_conv(x, 3, 3, 1, activation=None, name='allconv17')
+            x = gen_conv(x, 3, 3, 1, activation=tf.nn.tanh, name='allconv17')
             x_stage2 = tf.clip_by_value(x, -1., 1.)
         return x_stage1, x_stage2, offset_flow
 
@@ -147,7 +147,6 @@ class InpaintCAModel(Model):
         losses = {}
         # apply mask and complete image
         batch_complete = batch_predicted*mask + batch_incomplete*(1.-mask)
-        coarse_complete = x1*mask + batch_incomplete*(1.-mask)
 
         l1_alpha = config.COARSE_L1_ALPHA
         losses['l1_loss'] = l1_alpha * tf.reduce_mean(tf.abs(batch_pos - x1))
@@ -155,7 +154,7 @@ class InpaintCAModel(Model):
 
         if summary:
             scalar_summary('losses/l1_loss', losses['l1_loss'])
-            viz_img = [batch_pos, batch_incomplete, coarse_complete, batch_complete]
+            viz_img = [batch_pos, batch_incomplete, batch_complete]
             if offset_flow is not None:
                 viz_img.append(
                     resize(offset_flow, scale=4,
@@ -207,10 +206,9 @@ class InpaintCAModel(Model):
 
         # apply mask and reconstruct
         batch_complete = batch_predicted*mask + batch_incomplete*(1.-mask)
-        coarse_complete = x1*mask + batch_incomplete*(1.-mask)
 
         # global image visualization
-        viz_img = [batch_pos, batch_incomplete, coarse_complete, batch_complete]
+        viz_img = [batch_pos, batch_incomplete, batch_complete]
         if offset_flow is not None:
             viz_img.append(
                 resize(offset_flow, scale=4,
