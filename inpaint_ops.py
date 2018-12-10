@@ -1,6 +1,5 @@
 import logging
 import math
-from random import getrandbits
 
 import cv2
 import numpy as np
@@ -146,9 +145,9 @@ def gan_hinge_loss(dis_real, dis_fake, name='gan_hinge_loss'):
 def random_mask(config, name='mask'):
     def npmask(height, width,
                max_stroke=4,
-               min_vertex=4, max_vertex=20,
-               min_length_divisor=18, max_length_divisor=10,
-               min_brush_width_divisor=18, max_brush_width_divisor=6):
+               min_vertex=1, max_vertex=20,
+               min_length_divisor=10, max_length_divisor=5,
+               min_brush_width_divisor=18, max_brush_width_divisor=10):
         mask = np.zeros((height, width))
         
         min_length = height // min_length_divisor
@@ -167,7 +166,7 @@ def random_mask(config, name='mask'):
                 angle = np.random.uniform(max_angle)
                 if j % 2 == 0:
                     angle = 2 * math.pi - angle
-                length = np.random.uniform(min_length, max_length)
+                length = np.random.randint(min_length, max_length+1)
                 brush_width = np.random.randint(min_brush_width, max_brush_width+1)
                 end_x = (start_x + length * np.sin(angle)).astype(np.int32)
                 end_y = (start_y + length * np.cos(angle)).astype(np.int32)
@@ -175,9 +174,9 @@ def random_mask(config, name='mask'):
                 cv2.line(mask, (start_y, start_x), (end_y, end_x), 1., brush_width)
 
                 start_x, start_y = end_x, end_y
-        if getrandbits(1):
+        if np.random.random() < 0.5:
             mask = np.fliplr(mask)
-        if getrandbits(1):
+        if np.random.random() < 0.5:
             mask = np.flipud(mask)
         return mask.reshape((1,)+mask.shape+(1,)).astype(np.float32)
 
@@ -188,17 +187,17 @@ def random_mask(config, name='mask'):
         mask = tf.py_func(
             npmask,
             [height, width],
-            tf.float32, stateful=True)
+            tf.float32)
         mask.set_shape([1] + [height, width] + [1])
 
     return mask
 
 
 def data_augument(img):
-    if getrandbits(1):
+    if np.random.random() < 0.5:
         angle = np.random.uniform(-20, 20)
         img = rotate(img, angle, mode='nearest')
-    if getrandbits(1):
+    if np.random.random() < 0.5:
         img = np.fliplr(img)
     return img
 
