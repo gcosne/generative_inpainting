@@ -1,5 +1,4 @@
 import logging
-import math
 
 import cv2
 import numpy as np
@@ -27,7 +26,8 @@ def gated_conv(x, cnum, ksize, stride=1, rate=1, name='gconv',
         padding = 'VALID'
     feature = tf.layers.conv2d(
         x, cnum, ksize, stride, dilation_rate=rate,
-        activation=activation, padding=padding, name=name+'_feature')
+        activation=activation, padding=padding,
+        name=name+'_feature')
     gating = tf.layers.conv2d(
         x, cnum, ksize, stride, dilation_rate=rate,
         activation=tf.sigmoid, padding=padding,
@@ -52,26 +52,25 @@ class Conv2DSN(tf.layers.Conv2D):
         self.kernel = kernel_spectral_norm(self.kernel)
 
 
-def conv2d_sn(
-    inputs,
-    filters,
-    kernel_size=5,
-    strides=2,
-    padding='SAME',
-    data_format='channels_last',
-    dilation_rate=(1, 1),
-    activation=tf.nn.leaky_relu,
-    use_bias=True,
-    kernel_initializer=None,
-    bias_initializer=tf.zeros_initializer(),
-    kernel_regularizer=None,
-    bias_regularizer=None,
-    activity_regularizer=None,
-    kernel_constraint=None,
-    bias_constraint=None,
-    trainable=True,
-    name=None,
-    reuse=None):
+def conv2d_sn(inputs,
+              filters,
+              kernel_size=5,
+              strides=2,
+              padding='SAME',
+              data_format='channels_last',
+              dilation_rate=(1, 1),
+              activation=tf.nn.leaky_relu,
+              use_bias=True,
+              kernel_initializer=None,
+              bias_initializer=tf.zeros_initializer(),
+              kernel_regularizer=None,
+              bias_regularizer=None,
+              activity_regularizer=None,
+              kernel_constraint=None,
+              bias_constraint=None,
+              trainable=True,
+              name=None,
+              reuse=None):
     layer = Conv2DSN(
         filters=filters,
         kernel_size=kernel_size,
@@ -125,18 +124,18 @@ def kernel_spectral_norm(w, iteration=1, name='kernel_sn'):
         return w_norm
 
 
-def gan_hinge_loss(dis_real, dis_fake, name='gan_hinge_loss'):
+def gan_hinge_loss(pos, neg, name='gan_hinge_loss'):
     """
     gan with hinge loss:
     https://github.com/pfnet-research/sngan_projection/blob/master/updater.py
     """
     with tf.variable_scope(name):
-        hinge_pos = tf.reduce_mean(tf.nn.relu(1. - dis_real))
-        hinge_neg = tf.reduce_mean(tf.nn.relu(1. + dis_fake))
+        hinge_pos = tf.reduce_mean(tf.nn.relu(1-pos))
+        hinge_neg = tf.reduce_mean(tf.nn.relu(1+neg))
         scalar_summary('pos_hinge_avg', hinge_pos)
         scalar_summary('neg_hinge_avg', hinge_neg)
         d_loss = tf.add(.5 * hinge_pos, .5 * hinge_neg)
-        g_loss = -tf.reduce_mean(dis_fake)
+        g_loss = -tf.reduce_mean(neg)
         scalar_summary('d_loss', d_loss)
         scalar_summary('g_loss', g_loss)
     return g_loss, d_loss
@@ -144,28 +143,28 @@ def gan_hinge_loss(dis_real, dis_fake, name='gan_hinge_loss'):
 
 def random_mask(config, name='mask'):
     def npmask(height, width,
-               max_stroke=4,
-               min_vertex=1, max_vertex=20,
-               min_length_divisor=10, max_length_divisor=5,
+               min_stroke=1, max_stroke=4,
+               min_vertex=4, max_vertex=20,
+               min_length_divisor=10, max_length_divisor=2,
                min_brush_width_divisor=18, max_brush_width_divisor=10):
         mask = np.zeros((height, width))
-        
+
         min_length = height // min_length_divisor
         max_length = height // max_length_divisor
         min_brush_width = height // min_brush_width_divisor
         max_brush_width = height // max_brush_width_divisor
-        max_angle = 2 * math.pi
-        num_stroke = np.random.randint(1, max_stroke+1)
+        max_angle = 2 * np.pi
+        num_stroke = np.random.randint(min_stroke, max_stroke+1)
 
-        for i in range(num_stroke):
+        for _ in range(num_stroke):
             num_vertex = np.random.randint(min_vertex, max_vertex+1)
             start_x = np.random.randint(width)
             start_y = np.random.randint(height)
 
-            for j in range(num_vertex):
+            for i in range(num_vertex):
                 angle = np.random.uniform(max_angle)
-                if j % 2 == 0:
-                    angle = 2 * math.pi - angle
+                if i % 2 == 0:
+                    angle = 2 * np.pi - angle
                 length = np.random.randint(min_length, max_length+1)
                 brush_width = np.random.randint(min_brush_width, max_brush_width+1)
                 end_x = (start_x + length * np.sin(angle)).astype(np.int32)
@@ -193,9 +192,9 @@ def random_mask(config, name='mask'):
     return mask
 
 
-def data_augument(img):
+def data_augument(img, max_angle=20):
     if np.random.random() < 0.5:
-        angle = np.random.uniform(-20, 20)
+        angle = np.random.uniform(-max_angle, max_angle)
         img = rotate(img, angle, mode='nearest')
     if np.random.random() < 0.5:
         img = np.fliplr(img)
@@ -492,7 +491,6 @@ def compute_color(u,v):
         col[notidx] *= 0.75
         img[:, :, i] = np.uint8(np.floor(255 * col*(1-nanIdx)))
     return img
-
 
 
 def flow_to_image(flow):
