@@ -144,29 +144,27 @@ def gan_hinge_loss(pos, neg, name='gan_hinge_loss'):
 def random_mask(config, name='mask'):
     def npmask(height, width,
                min_stroke=1, max_stroke=4,
-               min_vertex=4, max_vertex=20,
+               min_vertex=1, max_vertex=12,
                min_length_divisor=10, max_length_divisor=2,
-               min_brush_width_divisor=18, max_brush_width_divisor=10):
+               min_brush_width_divisor=30, max_brush_width_divisor=8):
         mask = np.zeros((height, width))
 
         min_length = height // min_length_divisor
         max_length = height // max_length_divisor
         min_brush_width = height // min_brush_width_divisor
         max_brush_width = height // max_brush_width_divisor
-        max_angle = 2 * np.pi
+        max_angle = 2*np.pi
         num_stroke = np.random.randint(min_stroke, max_stroke+1)
 
         for _ in range(num_stroke):
             num_vertex = np.random.randint(min_vertex, max_vertex+1)
+            brush_width = np.random.randint(min_brush_width, max_brush_width+1)
             start_x = np.random.randint(width)
             start_y = np.random.randint(height)
 
             for i in range(num_vertex):
                 angle = np.random.uniform(max_angle)
-                if i % 2 == 0:
-                    angle = 2 * np.pi - angle
                 length = np.random.randint(min_length, max_length+1)
-                brush_width = np.random.randint(min_brush_width, max_brush_width+1)
                 end_x = (start_x + length * np.sin(angle)).astype(np.int32)
                 end_y = (start_y + length * np.cos(angle)).astype(np.int32)
 
