@@ -65,7 +65,6 @@ class InpaintCAModel(Model):
             x = gated_deconv(x, cnum, name='conv15_upsample')
             x = gated_conv(x, cnum//2, 3, 1, name='conv16')
             x = gen_conv(x, 3, 3, 1, activation=tf.nn.tanh, name='conv17')
-            x = tf.clip_by_value(x, -1., 1.)
             x_stage1 = x
             # return x_stage1, None, None
 
@@ -107,7 +106,7 @@ class InpaintCAModel(Model):
             x = gated_deconv(x, cnum, name='allconv15_upsample')
             x = gated_conv(x, cnum//2, 3, 1, name='allconv16')
             x = gen_conv(x, 3, 3, 1, activation=tf.nn.tanh, name='allconv17')
-            x_stage2 = tf.clip_by_value(x, -1., 1.)
+            x_stage2 = x
         return x_stage1, x_stage2, offset_flow
 
     def build_sn_patch_gan_discriminator(self, x, mask,
@@ -116,12 +115,12 @@ class InpaintCAModel(Model):
         x = tf.concat([x, ones_x*mask], axis=3)
         with tf.variable_scope('discriminator', reuse=reuse):
             cnum = 64
-            x = conv2d_sn(x, cnum, name='sn_conv1')
-            x = conv2d_sn(x, cnum*2, name='sn_conv2')
-            x = conv2d_sn(x, cnum*4, name='sn_conv3')
-            x = conv2d_sn(x, cnum*4, name='sn_conv4')
-            x = conv2d_sn(x, cnum*4, name='sn_conv5')
-            x = conv2d_sn(x, cnum*4, name='sn_conv6')
+            x = conv2d_sn(x, cnum, 5, 1, name='sn_conv1')
+            x = conv2d_sn(x, cnum*2, 5, 2, name='sn_conv2')
+            x = conv2d_sn(x, cnum*4, 5, 2, name='sn_conv3')
+            x = conv2d_sn(x, cnum*4, 5, 2, name='sn_conv4')
+            x = conv2d_sn(x, cnum*4, 5, 2, name='sn_conv5')
+            x = conv2d_sn(x, cnum*4, 5, 2, name='sn_conv6')
             return x
 
     def build_graph_with_losses(self, batch_data, config, training=True,
@@ -148,8 +147,7 @@ class InpaintCAModel(Model):
         # apply mask and complete image
         batch_complete = batch_predicted*mask + batch_incomplete*(1.-mask)
 
-        l1_alpha = config.COARSE_L1_ALPHA
-        losses['l1_loss'] = l1_alpha * tf.reduce_mean(tf.abs(batch_pos - x1))
+        losses['l1_loss'] = config.COARSE_L1_ALPHA * tf.reduce_mean(tf.abs(batch_pos - x1))
         losses['l1_loss'] += tf.reduce_mean(tf.abs(batch_pos - x2))
 
         if summary:
