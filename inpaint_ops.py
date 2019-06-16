@@ -48,12 +48,6 @@ def gated_deconv(x, cnum, name='upsample', padding='SAME', training=True):
         return x
 
 
-class Conv2DSN(tf.layers.Conv2D):
-    def build(self, input_shape):
-        super(Conv2DSN, self).build(input_shape)
-        self.kernel = kernel_spectral_norm(self.kernel)
-
-
 def conv2d_sn(inputs,
               filters,
               kernel_size,
@@ -94,6 +88,12 @@ def conv2d_sn(inputs,
         _reuse=reuse,
         _scope=name)
     return layer.apply(inputs)
+
+
+class Conv2DSN(tf.layers.Conv2D):
+    def build(self, input_shape):
+        super(Conv2DSN, self).build(input_shape)
+        self.kernel = kernel_spectral_norm(self.kernel)
 
 
 def kernel_spectral_norm(w, iteration=1, name='kernel_sn'):
@@ -357,6 +357,7 @@ def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
             yi = tf.nn.conv2d(yi, fuse_weight, strides=[1,1,1,1], padding='SAME')
             yi = tf.reshape(yi, [1, fs[2], fs[1], bs[2], bs[1]])
             yi = tf.transpose(yi, [0, 2, 1, 4, 3])
+
         yi = tf.reshape(yi, [1, fs[1], fs[2], bs[1]*bs[2]])
 
         # softmax to match
@@ -366,15 +367,18 @@ def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
 
         offset = tf.argmax(yi, axis=3, output_type=tf.int32)
         offset = tf.stack([offset // fs[2], offset % fs[2]], axis=-1)
+
         # deconv for patch pasting
         # 3.1 paste center
         wi_center = raw_wi[0]
         yi = tf.nn.conv2d_transpose(yi, wi_center, tf.concat([[1], raw_fs[1:]], axis=0), strides=[1,rate,rate,1]) / 4.
+
         y.append(yi)
         offsets.append(offset)
 
     y = tf.concat(y, axis=0)
     y.set_shape(raw_int_fs)
+
     offsets = tf.concat(offsets, axis=0)
     offsets.set_shape(int_bs[:3] + [2])
 
@@ -389,6 +393,7 @@ def contextual_attention(f, b, mask=None, ksize=3, stride=1, rate=1,
     # flow = highlight_flow_tf(offsets * tf.cast(mask, tf.int32))
     if rate != 1:
         flow = resize(flow, scale=rate, func=tf.image.resize_nearest_neighbor)
+
     return y, flow
 
 
