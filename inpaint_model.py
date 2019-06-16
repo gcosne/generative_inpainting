@@ -8,10 +8,7 @@ from tensorflow.contrib.framework.python.ops import arg_scope
 
 from neuralgym.models import Model
 from neuralgym.ops.summary_ops import scalar_summary, images_summary
-from neuralgym.ops.summary_ops import gradients_summary
-from neuralgym.ops.layers import flatten, resize
-from neuralgym.ops.gan_ops import gan_wgan_loss, gradients_penalty
-from neuralgym.ops.gan_ops import random_interpolates
+from neuralgym.ops.layers import resize
 
 from inpaint_ops import conv2d_sn, gan_hinge_loss
 from inpaint_ops import gated_conv, gated_deconv, gen_conv
