@@ -197,6 +197,7 @@ def data_augument(img):
     img = random_transform(img,
                            rotation_range=10,
                            shear_range=.2,
+                           zoom_range=.2,
                            channel_shift_range=10.,
                            horizontal_flip=True)
     return img
