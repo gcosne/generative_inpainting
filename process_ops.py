@@ -249,6 +249,7 @@ def random_transform(x, rotation_range=0,
                      width_shift_range=0.,
                      height_shift_range=0.,
                      shear_range=0.,
+                     zoom_range=0.,
                      channel_shift_range=0.,
                      horizontal_flip=False,
                      vertical_flip=False,
@@ -274,11 +275,25 @@ def random_transform(x, rotation_range=0,
     else:
         shear = 0
 
+    if np.isscalar(zoom_range):
+        zoom_range = [1 - zoom_range, 1 + zoom_range]
+    elif len(zoom_range) == 2:
+        zoom_range = [zoom_range[0], zoom_range[1]]
+    else:
+        raise ValueError('`zoom_range` should be a float or '
+                         'a tuple or list of two floats. '
+                         'Received arg: ', zoom_range)
+    if zoom_range[0] == 1 and zoom_range[1] == 1:
+        zx, zy = 1, 1
+    else:
+        zx, zy = np.random.uniform(zoom_range[0], zoom_range[1], 2)
+
     # Apply transforms
     x = apply_affine_transform(x,
                                theta,
                                tx, ty,
-                               shear)
+                               shear,
+                               zx, zy)
 
     if channel_shift_range != 0:
         x = random_channel_shift(x, channel_shift_range, 2)
@@ -306,5 +321,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     im = np.array(Image.open(args.image))
-    img = random_transform(im, rotation_range=10, shear_range=.5, channel_shift_range=10., horizontal_flip=True)
+    img = random_transform(im, rotation_range=10, shear_range=.5, zoom_range=.2, channel_shift_range=10., horizontal_flip=True)
     Image.fromarray(np.uint8(img)).save(args.imageOut)
