@@ -142,6 +142,17 @@ def random_channel_shift(x, intensity, channel_axis=0):
     return x
 
 
+# For curving soybean pods. L.C.Uzal
+def random_curves_transform(x, strength=0.1, range=(0.,255.)):
+    low, high = range
+    delta = (high - low) * strength / 2.
+    xp = np.random.uniform(low=low + delta, high=high - delta)
+    yp = np.random.uniform(low=xp-delta, high=xp+delta)
+    xp = np.asarray([low, xp, high])
+    yp = np.asarray([low, yp, high])
+    return np.interp(x,xp,yp)
+
+
 def transform_matrix_offset_center(matrix, x, y):
     o_x = float(x) / 2 + 0.5
     o_y = float(y) / 2 + 0.5
@@ -240,7 +251,8 @@ def random_transform(x, rotation_range=0,
                      shear_range=0.,
                      channel_shift_range=0.,
                      horizontal_flip=False,
-                     vertical_flip=False):
+                     vertical_flip=False,
+                     random_curves_strength=0.):
     # Generate params
     if rotation_range:
         theta = np.random.uniform(-rotation_range, rotation_range)
@@ -278,6 +290,9 @@ def random_transform(x, rotation_range=0,
     if vertical_flip:
         if np.random.random() < 0.5:
             x = flip_axis(x, 0)
+
+    if random_curves_strength > 0.:
+        x = random_curves_transform(x, random_curves_strength)
 
     return x
 
