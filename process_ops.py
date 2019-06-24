@@ -132,6 +132,16 @@ def random_zoom(x, zoom_range, row_axis=0, col_axis=1, channel_axis=2,
     return x
 
 
+def random_channel_shift(x, intensity, channel_axis=0):
+    x = np.rollaxis(x, channel_axis, 0)
+    min_x, max_x = np.min(x), np.max(x)
+    channel_images = [np.clip(x_channel + np.random.uniform(-intensity, intensity), min_x, max_x)
+                      for x_channel in x]
+    x = np.stack(channel_images, axis=0)
+    x = np.rollaxis(x, 0, channel_axis + 1)
+    return x
+
+
 def transform_matrix_offset_center(matrix, x, y):
     o_x = float(x) / 2 + 0.5
     o_y = float(y) / 2 + 0.5
@@ -228,6 +238,7 @@ def random_transform(x, rotation_range=0,
                      width_shift_range=0.,
                      height_shift_range=0.,
                      shear_range=0.,
+                     channel_shift_range=0.,
                      horizontal_flip=False,
                      vertical_flip=False):
     # Generate params
@@ -251,19 +262,34 @@ def random_transform(x, rotation_range=0,
     else:
         shear = 0
 
-    flip_horizontal = (np.random.random() < 0.5) * horizontal_flip
-    flip_vertical = (np.random.random() < 0.5) * vertical_flip
-
     # Apply transforms
     x = apply_affine_transform(x,
                                theta,
                                tx, ty,
                                shear)
 
-    if flip_horizontal:
-        x = flip_axis(x, 1)
+    if channel_shift_range != 0:
+        x = random_channel_shift(x, channel_shift_range, 2)
 
-    if flip_vertical:
-        x = flip_axis(x, 0)
-    
+    if horizontal_flip:
+        if np.random.random() < 0.5:
+            x = flip_axis(x, 1)
+
+    if vertical_flip:
+        if np.random.random() < 0.5:
+            x = flip_axis(x, 0)
+
     return x
+
+
+if __name__ == "__main__":
+    import argparse
+    from PIL import Image
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--image', default='', type=str)
+    parser.add_argument('--imageOut', default='result.png', type=str)
+    args = parser.parse_args()
+
+    im = np.array(Image.open(args.image))
+    img = random_transform(im, rotation_range=10, shear_range=.5, channel_shift_range=10., horizontal_flip=True)
+    Image.fromarray(np.uint8(img)).save(args.imageOut)
