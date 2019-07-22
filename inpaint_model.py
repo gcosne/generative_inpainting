@@ -121,12 +121,22 @@ class InpaintCAModel(Model):
             return x
 
     def build_graph_with_losses(self, batch_data, config, training=True,
-                                summary=False, reuse=False):
+                                summary=False, reuse=False, batch_mask=None):
+        
+        #print('INPAINT MODEL')
+        #print('config.CUSTOM_MASK = ',config.CUSTOM_MASK)
         batch_pos = batch_data / 127.5 - 1.
-
-        # generate mask, 1 represents masked point
-        mask = random_mask(config)
-
+        #print('This is the batch_pos shape',batch_pos.shape)
+        
+        if batch_mask == None:
+            # generate mask, 1 represents masked point
+            mask = random_mask(config)
+            # print('THIS IS RANDOM_MASK_SHAPE',mask.shape)
+        else:
+            channels = tf.unstack (batch_mask, axis=-1)
+            mask    = channels[0]
+            mask    = tf.expand_dims(mask,axis = -1)
+            
         batch_incomplete = batch_pos*(1.-mask)
         # inpaint
         x1, x2, offset_flow = self.build_inpaint_net(
@@ -178,11 +188,12 @@ class InpaintCAModel(Model):
             tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator')
         return g_vars, d_vars, losses
 
-    def build_infer_graph(self, batch_data, config, name='val'):
+    def build_infer_graph(self, batch_data, config, name='val',mask=None):
         """
         """
-        mask = random_mask(config, name=name+'mask_c')
-
+        if mask is None:
+            mask = random_mask(config, name=name+'mask_c')
+            
         batch_pos = batch_data / 127.5 - 1.
         edges = None
 
@@ -214,11 +225,11 @@ class InpaintCAModel(Model):
 
         return batch_complete
 
-    def build_static_infer_graph(self, batch_data, config, name):
+    def build_static_infer_graph(self, batch_data, config, name,mask=None):
         """
         """
         # generate mask, 1 represents masked point
-        return self.build_infer_graph(batch_data, config, name)
+        return self.build_infer_graph(batch_data, config, name,mask)
 
     def build_server_graph(self, batch_data, reuse=False, is_training=False):
         """
